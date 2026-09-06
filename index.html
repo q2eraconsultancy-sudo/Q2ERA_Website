@@ -279,6 +279,26 @@
   .achieve-card p{font-size:0.88rem; color:var(--ink-soft); margin-top:8px;}
 
   /* ===== CLIENT FEEDBACK ===== */
+  .feedback-head-row{
+    display:flex; align-items:flex-start; justify-content:space-between; gap:24px;
+    margin-bottom:52px; flex-wrap:wrap;
+  }
+  .consultation-counter{
+    flex-shrink:0; text-align:right; background:var(--card); border:1px solid var(--line);
+    border-radius:var(--radius); padding:16px 24px; min-width:150px;
+  }
+  .counter-number{
+    display:block; font-family:'Fraunces',serif; font-size:2.1rem; font-weight:600;
+    color:var(--orange); line-height:1;
+  }
+  .counter-label{
+    display:block; font-family:'IBM Plex Mono',monospace; font-size:0.68rem; letter-spacing:0.05em;
+    text-transform:uppercase; color:var(--ink-soft); margin-top:6px; line-height:1.4;
+  }
+  @media(max-width:700px){
+    .feedback-head-row{flex-direction:column;}
+    .consultation-counter{text-align:left; align-self:flex-start;}
+  }
   .feedback-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:24px;}
   @media(max-width:900px){ .feedback-grid{grid-template-columns:1fr;} }
   .feedback-card{
@@ -289,7 +309,6 @@
   .fb-text{font-family:'Fraunces',serif; font-style:italic; font-size:0.98rem; color:var(--ink); line-height:1.55; margin:0;}
   .fb-name{font-family:'IBM Plex Mono',monospace; font-size:0.76rem; color:var(--ink-soft);}
   .fb-role{color:var(--ink-soft);}
-  .fb-name em.pending{color:var(--orange); font-style:normal;}
   .feedback-empty{
     grid-column:1/-1; text-align:center; color:var(--ink-soft); font-size:0.95rem;
     background:var(--cream-warm); border:1px dashed var(--line); border-radius:var(--radius);
@@ -549,10 +568,16 @@
   <!-- CLIENT FEEDBACK -->
   <section id="feedback">
     <div class="wrap">
-      <div class="section-head reveal">
-        <span class="eyebrow">Client feedback</span>
-        <h2>What our clients say</h2>
-        <p>Feedback shared by researchers and students who've worked with Q²ERA.</p>
+      <div class="feedback-head-row">
+        <div class="section-head reveal" style="margin-bottom:0;">
+          <span class="eyebrow">Client feedback</span>
+          <h2>What our clients say</h2>
+          <p>Feedback shared by researchers and students who've worked with Q²ERA.</p>
+        </div>
+        <div class="consultation-counter reveal" id="consultation-counter">
+          <span class="counter-number">3</span>
+          <span class="counter-label">Consultations<br>provided to date</span>
+        </div>
       </div>
       <div class="feedback-grid" id="feedback-grid">
         <p class="feedback-empty" id="feedback-empty">No feedback yet — be the first to share your experience working with us. Use the feedback form below.</p>
@@ -617,10 +642,7 @@
         <div class="form-card reveal" id="book">
           <h3>Request a Session</h3>
           <span class="sub">For consultations, analysis support, or full-project collaboration.</span>
-          <form id="session-form" action="https://formsubmit.co/q2eraconsultancy@gmail.com" method="POST" onsubmit="return handleSubmit(event,'session')">
-            <input type="hidden" name="_subject" value="New Session Request — Q²ERA website">
-            <input type="hidden" name="_template" value="table">
-            <input type="hidden" name="_captcha" value="false">
+          <form id="session-form" onsubmit="return handleSessionSubmit(event)">
             <div class="field">
               <label for="s-name">Full name</label>
               <input id="s-name" name="Full Name" type="text" placeholder="Your name" required>
@@ -658,10 +680,7 @@
         <div class="form-card reveal">
           <h3>Share Your Feedback</h3>
           <span class="sub">Availed our service? Let us and future clients know how it went.</span>
-          <form id="feedback-form" action="https://formsubmit.co/q2eraconsultancy@gmail.com" method="POST" onsubmit="return handleFeedback(event)">
-            <input type="hidden" name="_subject" value="New Feedback — Q²ERA website">
-            <input type="hidden" name="_template" value="table">
-            <input type="hidden" name="_captcha" value="false">
+          <form id="feedback-form" onsubmit="return handleFeedback(event)">
             <div class="field">
               <label for="f-name">Your name</label>
               <input id="f-name" name="Name" type="text" placeholder="Name (or 'Anonymous')" required>
@@ -693,7 +712,7 @@
               <textarea id="f-text" name="Feedback" placeholder="Tell us about your experience with our service" required style="min-height:120px;"></textarea>
             </div>
             <button type="submit" class="btn btn-ghost form-submit" style="border-color:rgba(255,255,255,0.4); color:#fff;">Submit Feedback</button>
-            <div class="success-msg" id="feedback-success">Thank you! Your feedback has been sent to our team and posted below for review.</div>
+            <div class="success-msg" id="feedback-success">Thank you for the Feedback.</div>
           </form>
         </div>
       </div>
@@ -747,16 +766,42 @@
   }, {threshold:0.15});
   document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
 
-  function handleSubmit(ev, type){
+  function handleSessionSubmit(ev){
     ev.preventDefault();
     const form = ev.target;
-    const successId = type === 'session' ? 'session-success' : 'contact-success';
-    fetch(form.action, { method:'POST', body:new FormData(form), headers:{ 'Accept':'application/json' } })
-      .catch(()=>{ /* still show success; FormSubmit may block cross-origin read but the email still sends */ });
-    document.getElementById(successId).classList.add('show');
-    form.reset();
+    const payload = {
+      formType: 'session',
+      name: document.getElementById('s-name').value,
+      email: document.getElementById('s-email').value,
+      role: document.getElementById('s-role').value,
+      service: document.getElementById('s-service').value,
+      notes: document.getElementById('s-notes').value
+    };
+    fetch(API_URL, {
+      method:'POST',
+      headers:{ 'Content-Type':'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload)
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.result === 'success') {
+          document.getElementById('session-success').classList.add('show');
+          form.reset();
+        } else {
+          alert('Sorry, something went wrong sending your request. Please try again or email us directly.');
+        }
+      })
+      .catch(()=>{
+        alert('Sorry, something went wrong sending your request. Please check your connection and try again.');
+      });
     return false;
   }
+
+  // ===== CLIENT FEEDBACK (Google Sheets backend via Apps Script) =====
+  // TODO (Q²ERA team): After deploying the Apps Script web app (see setup
+  // instructions provided separately), paste its URL below, replacing the
+  // placeholder. It looks like: https://script.google.com/macros/s/XXXXX/exec
+  const API_URL = "https://script.google.com/macros/s/AKfycbwj-wH8WzB79Q22Zyqb5XkrmudH0EhJ7fjYYQJU2sVdZ0ASga5kzCjefYMvrRaz7XrB/exec";
 
   function handleFeedback(ev){
     ev.preventDefault();
@@ -766,23 +811,59 @@
     const rating = document.getElementById('f-rating').value;
     const text = document.getElementById('f-text').value;
 
-    fetch(form.action, { method:'POST', body:new FormData(form), headers:{ 'Accept':'application/json' } })
-      .catch(()=>{ /* still show locally; FormSubmit may block cross-origin read but the email still sends */ });
-
-    const grid = document.getElementById('feedback-grid');
-    const emptyMsg = document.getElementById('feedback-empty');
-    if (emptyMsg) emptyMsg.remove();
-
-    const card = document.createElement('div');
-    card.className = 'feedback-card reveal in';
-    const who = role ? `${name} <span class="fb-role">— ${role}</span>` : name;
-    card.innerHTML = `<div class="stars">${rating}</div><p class="fb-text">"${text.replace(/</g,'&lt;')}"</p><span class="fb-name">${who} <em class="pending">(pending review)</em></span>`;
-    grid.prepend(card);
-
-    document.getElementById('feedback-success').classList.add('show');
-    form.reset();
+    fetch(API_URL, {
+      method:'POST',
+      // text/plain avoids a CORS preflight request, which Apps Script
+      // web apps don't handle well. The script itself parses this as JSON.
+      headers:{ 'Content-Type':'text/plain;charset=utf-8' },
+      body: JSON.stringify({ formType: 'feedback', name, role, rating, feedback: text })
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.result === 'success') {
+          document.getElementById('feedback-success').classList.add('show');
+          form.reset();
+        } else {
+          alert('Sorry, something went wrong sending your feedback. Please try again.');
+        }
+      })
+      .catch(()=>{
+        alert('Sorry, something went wrong sending your feedback. Please check your connection and try again.');
+      });
     return false;
   }
+
+  function renderFeedbackAndCounter(){
+    if (!API_URL || API_URL.indexOf('PASTE_YOUR') === 0) return;
+    fetch(API_URL)
+      .then(res => res.json())
+      .then(data => {
+        const items = (data && data.feedback) || [];
+        if (items.length > 0) {
+          const grid = document.getElementById('feedback-grid');
+          const emptyMsg = document.getElementById('feedback-empty');
+          if (emptyMsg) emptyMsg.remove();
+          grid.innerHTML = '';
+          items.forEach(item => {
+            const card = document.createElement('div');
+            card.className = 'feedback-card reveal in';
+            const who = item.role ? `${item.name} <span class="fb-role">— ${item.role}</span>` : item.name;
+            const safeText = String(item.feedback || '').replace(/</g,'&lt;');
+            card.innerHTML = `<div class="stars">${item.rating || ''}</div><p class="fb-text">"${safeText}"</p><span class="fb-name">${who}</span>`;
+            grid.appendChild(card);
+          });
+        }
+
+        if (typeof data.consultationCount === 'number') {
+          const counterEl = document.getElementById('consultation-counter');
+          if (counterEl) {
+            counterEl.querySelector('.counter-number').textContent = data.consultationCount;
+          }
+        }
+      })
+      .catch(()=>{ /* leave existing empty-state / hidden counter in place on failure */ });
+  }
+  renderFeedbackAndCounter();
 
   // ===== PAYMENT MODAL =====
   function openPaymentModal(){
